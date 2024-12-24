@@ -35,10 +35,10 @@ export class ClassesController {
   getClassById(@Param('id', ParseUUIDPipe) id: string): Class {
     return this.classesService.findById(id);
   }
-  // @Post('/search-by-name') // for test only
-  // findClassByClassName(@Body() className: string) {
-  //   return this.classesService.findByClassName(className);
-  // }
+  @Post('/search-by-name') // for test only
+  findClassByClassName(@Body() className: string) {
+    return this.classesService.searchByClassName (className);
+  }
   @Delete(':id')
   // @Roles(Role.Admin, Role.Principal)
   deleteClass(@Param('id', ParseUUIDPipe) classId: string): string {

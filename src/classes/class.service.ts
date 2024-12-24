@@ -54,6 +54,12 @@ export class ClassesService {
             (classItem) => classItem.className === name,
         );
     }
+    searchByClassName(name:string) : Class[]{
+        const classessByName = this.classes.filter(c => c.className.includes(name));
+        if(classessByName.length == 0 )
+            throw new NotFoundException(`No students found with the name ${name}`);
+        return classessByName;
+    }
     findById(id: string): Class {
         const foundClass = this.classes.find((classItem) => classItem.id === id);
         if (!foundClass) {
