@@ -17,46 +17,46 @@ export class StudentController {
 
   @Post()
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.Admin, Role.Teacher)
+  @Roles(Role.Admin, Role.Teacher)
   create(@Body(ValidationPipe) createStudentDto: CreateStudentDto) {
     return this.studentService.create(createStudentDto);
   }
 
   @Get()
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.Admin, Role.Teacher, Role.Principal)
+  @Roles(Role.Admin, Role.Teacher, Role.Principal)
   getAll() {
     return this.studentService.getAll();
   }
 
   @Get(':id')
-  // @Roles(Role.Admin, Role.Teacher, Role.Principal)
+  @Roles(Role.Admin, Role.Teacher, Role.Principal)
   getStudentById(@Param('id', ParseUUIDPipe) id: string): Student {
     return this.studentService.getById(id);
   }
   @Post('/search-by-name')
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.Admin, Role.Teacher, Role.Principal)
+  @Roles(Role.Admin, Role.Teacher, Role.Principal)
   getByName(@Body(ValidationPipe) SearchStudentDto: SearchStudentDto) {
     return this.studentService.getByName(SearchStudentDto);
   }
 
   @Put(':id')
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.Admin, Role.Teacher)
+  @Roles(Role.Admin, Role.Teacher)
   update(@Param('id') id: string, @Body(new ValidationPipe()) updateStudentDto: UpdateStudentDto) {
     return this.studentService.update(id, updateStudentDto);
   }
 
   @Post('/class')
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.Admin, Role.Teacher, Role.Principal)
+  @Roles(Role.Admin, Role.Teacher, Role.Principal)
   getByClassName(@Body(ValidationPipe) getByClassNameDto: GetByClassNameDto) {
     return this.studentService.getByClassName(getByClassNameDto);
   }
 
   @Delete(':id')
-  // @Roles(Role.Admin, Role.Teacher)
+  @Roles(Role.Admin, Role.Teacher)
   deleteStudentById(@Param('id', ParseUUIDPipe) id: string): void {
     this.studentService.deleteById(id);
   }

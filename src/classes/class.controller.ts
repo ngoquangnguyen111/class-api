@@ -16,13 +16,13 @@ export class ClassesController {
 
 
   @Post()
-  // @Roles(Role.Admin, Role.Principal)
+  @Roles(Role.Admin, Role.Principal)
   create(@Body(ValidationPipe) createClassDto: CreateClassDto) {
     return this.classesService.create(createClassDto);
   }
 
   @Put(':id')
-  // @Roles(Role.Admin, Role.Principal)
+  @Roles(Role.Admin, Role.Principal)
   updateClass(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(ValidationPipe) updateClassDto: UpdateClassDto,
@@ -31,7 +31,7 @@ export class ClassesController {
   }
 
   @Get(':id')
-  // @Roles(Role.Admin, Role.Principal, Role.Teacher)
+  @Roles(Role.Admin, Role.Principal, Role.Teacher)
   getClassById(@Param('id', ParseUUIDPipe) id: string): Class {
     return this.classesService.findById(id);
   }
@@ -40,12 +40,12 @@ export class ClassesController {
     return this.classesService.searchByClassName (className);
   }
   @Delete(':id')
-  // @Roles(Role.Admin, Role.Principal)
+  @Roles(Role.Admin, Role.Principal)
   deleteClass(@Param('id', ParseUUIDPipe) classId: string): string {
     return this.classesService.deleteClass(classId);
   }
   @Get()
-  // @Roles(Role.Admin, Role.Principal, Role.Teacher)
+  @Roles(Role.Admin, Role.Principal, Role.Teacher)
   getAll(): Class[] {
     return this.classesService.getAll();
   }

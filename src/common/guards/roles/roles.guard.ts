@@ -1,19 +1,26 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Request } from 'express';
+import { role } from 'src/common/guards/role';
+import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class RoleGuard implements CanActivate {
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const role = request.headers['x-role'];  // Lấy role từ header 'X-Role'
+  constructor(private readonly reflector: Reflector) {}
 
-    // Kiểm tra quyền của người dùng dựa trên role
-    if (role === 'admin' || role === 'principal' || role === 'teacher') {
-      return true;
+  canActivate(context: ExecutionContext): boolean {
+    const roles = this.reflector.get<typeof role>('roles', context.getHandler());
+    if (!roles) {
+      return false;
     }
-
+    const request = context.switchToHttp().getRequest<Request>();
+    const token = request.headers.authorization;
+    if(!token)
+      return false;
+    for (let i = 0; i < roles.length; i++) {
+      if (token.includes(roles[i])) {
+        return true;
+      }
+    }
     return false;
   }
 }
