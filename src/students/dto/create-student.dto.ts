@@ -7,7 +7,7 @@ export class CreateStudentDto {
     @Matches(/^[a-zA-Z ]*$/, {
             message: 'student name should only contain letters, no numbers or special characters allowed',
           })
-    public name: string;
+    name: string;
   
     @IsNotEmpty()
     @IsString()
@@ -15,6 +15,6 @@ export class CreateStudentDto {
     @Matches(/^[a-zA-Z0-9 ]*$/, {
         message: 'class name should only contain letters and numbers, no special characters allowed',
       })
-    public className: string;
+    className: string;
 }
 
