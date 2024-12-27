@@ -1,8 +1,9 @@
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, Length } from 'class-validator';
 
 export class CreateClassDto {
     @IsString()
     @IsNotEmpty()
+    @Length(1, 50)
     @Matches(/^[a-zA-Z0-9 ]*$/, {
         message: 'class name should only contain letters and numbers, no special characters allowed',
       })
