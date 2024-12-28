@@ -1,103 +1,115 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Like, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { Student } from './entities/student.entity';
 import { SearchStudentDto } from './dto/search-student.dto';
 import { GetByClassNameDto } from './dto/get-by-classname.dto';
+import { Student } from './entities/student.entity';
 import { ClassesService } from 'src/classes/class.service';
+import { Not } from 'typeorm';
 
 @Injectable()
 export class StudentService {
-    private students: Student[] = [];
     constructor(
+        @InjectRepository(Student)
+        private readonly studentRepository: Repository<Student>,
         private readonly classService: ClassesService,
-    ) { }
+    ) {}
 
-    create(createStudentDto: CreateStudentDto) {
+    async create(createStudentDto: CreateStudentDto): Promise<Student> {
         const { name, className } = createStudentDto;
 
-
-        if (this.students.some(student => student.name === name)) {
+        const existingStudent = await this.studentRepository.findOne({ where: { name } });
+        if (existingStudent) {
             throw new BadRequestException('Student name must be unique');
         }
-        this.classService.increaseStudentByClassName(createStudentDto.className);
-        const newStudent = {
+
+        const classEntity = await this.classService.findByClassName(className);
+        if (!classEntity) {
+            throw new NotFoundException(`Class with name ${className} not found`);
+        }
+
+        this.classService.increaseStudentByClassName(className);
+
+        const newStudent = this.studentRepository.create({
             id: uuidv4(),
             name,
-            className,
-        };
+            classId: classEntity.id,
+        });
 
-        this.students.push(newStudent);
-        
-        return newStudent;
+        return this.studentRepository.save(newStudent);
     }
-    update(id: string, updateStudentDto: UpdateStudentDto) {
-        const studentIndex = this.students.findIndex(
-            (student) => student.id === id,
-        );
 
-        if (studentIndex === -1) {
+    async update(id: string, updateStudentDto: UpdateStudentDto): Promise<Student> {
+        const student = await this.studentRepository.findOne({ where: { id } });
+
+        if (!student) {
             throw new NotFoundException('Student not found');
         }
 
         const { name, className } = updateStudentDto;
 
-
-        if (
-            name &&
-            this.students.some(
-                (student) => student.name === name && student.id !== id,
-            )
-        ) {
-            throw new BadRequestException('Student name must be unique');
+        if (name) {
+            const existingStudent = await this.studentRepository.findOne({ where: { name, id: Not(id) } });
+            if (existingStudent) {
+                throw new BadRequestException('Student name must be unique');
+            }
         }
-        
-        this.classService.deCreaseStudentByClassName(this.students[studentIndex].className);
-        this.classService.increaseStudentByClassName(className);
-        
-        this.students[studentIndex] = {
-            ...this.students[studentIndex],
-            ...updateStudentDto,
-        };
 
-        return this.students[studentIndex];
-    }
-    getAll() {
-        return this.students;
+        if (className) {
+            const oldClassName = student.classId; // Assuming classId contains the class name
+            this.classService.decreaseStudentByClassName(oldClassName);
+            this.classService.increaseStudentByClassName(className);
+
+            const classEntity = await this.classService.findByClassName(className);
+            student.classId = classEntity.id;
+        }
+
+        student.name = name ?? student.name;
+
+        return this.studentRepository.save(student);
     }
 
-    getById(id: string): Student {
-        const student = this.students.find(student => student.id === id);
+    async getAll(): Promise<Student[]> {
+        return this.studentRepository.find();
+    }
+
+    async getById(id: string): Promise<Student> {
+        const student = await this.studentRepository.findOne({ where: { id } });
         if (!student) {
             throw new NotFoundException(`Student with ID ${id} not found.`);
         }
         return student;
     }
-    getByName(SearchStudentDto: SearchStudentDto): Student[] {
-        const { name } = SearchStudentDto;
-        const studentsByName = this.students.filter(student => student.name.includes(name));
-        if (studentsByName.length === 0) {
+
+    async getByName(searchStudentDto: SearchStudentDto): Promise<Student[]> {
+        const { name } = searchStudentDto;
+        const students = await this.studentRepository.find({ where: { name: Like(`%${name}%`) } });
+        if (students.length === 0) {
             throw new NotFoundException(`No students found with the name ${name}`);
         }
-        return studentsByName;
+        return students;
     }
-    deleteById(id: string): void {
-        const index = this.students.findIndex(student => student.id === id);
-        
-        if (index === -1) {
+
+    async deleteById(id: string): Promise<void> {
+        const student = await this.studentRepository.findOne({ where: { id } });
+        if (!student) {
             throw new NotFoundException(`Student with ID ${id} not found`);
         }
-        this.classService.deCreaseStudentByClassName(this.students[index].className);
 
-        this.students.splice(index, 1);
+        this.classService.decreaseStudentByClassName(student.classId);
+
+        await this.studentRepository.delete(id);
     }
-    getByClassName(GetByClassNameDto: GetByClassNameDto): Student[] {
-        const { className } = GetByClassNameDto;
-        const studentsInClass = this.students.filter(student => student.className === className);
-        if (studentsInClass.length === 0) {
+
+    async getByClassName(getByClassNameDto: GetByClassNameDto): Promise<Student[]> {
+        const { className } = getByClassNameDto;
+        const students = await this.studentRepository.find({ where: { classId: className } });
+        if (students.length === 0) {
             throw new NotFoundException(`No students found in class ${className}`);
         }
-        return studentsInClass;
+        return students;
     }
 }

@@ -1,105 +1,131 @@
-import { BadRequestException, ConflictException, forwardRef, Inject, Injectable, NotFoundException, Scope } from '@nestjs/common';
-import { CreateClassDto } from './dto/create-class.dto';
-import { Class } from './entities/class.entity';
-import { v4 as uuidv4 } from 'uuid';
-import { UpdateClassDto } from './dto/update-class.dto';
-import { StudentService } from 'src/students/student.service';
-import { find } from 'rxjs';
-
-@Injectable( { scope: Scope.DEFAULT })
-export class ClassesService {
-    public classes: Class[] = [];
-
-    
-    create(createClassDto: CreateClassDto) {
-
-        const existingClass = this.findByClassName(createClassDto.className);
-
-        if (existingClass) {
-            throw new ConflictException(
-                'Class name must be unique'
-            );
-        }
-
-
-        const newClass = {
-            id: uuidv4(),
-            className: createClassDto.className,
-            numStudent: 0
-        };
-        this.classes.push(newClass);
-        return newClass;
+import { 
+    BadRequestException, 
+    ConflictException, 
+    Injectable, 
+    NotFoundException, 
+  } from '@nestjs/common';
+  import { InjectRepository } from '@nestjs/typeorm';
+  import { Repository } from 'typeorm';
+  import { CreateClassDto } from './dto/create-class.dto';
+  import { UpdateClassDto } from './dto/update-class.dto';
+  import { Class } from './entities/class.entity';
+  
+  @Injectable()
+  export class ClassesService {
+    constructor(
+      @InjectRepository(Class) 
+      private readonly classRepository: Repository<Class>,
+    ) {}
+  
+    async create(createClassDto: CreateClassDto): Promise<Class> {
+      const existingClass = await this.classRepository.findOne({
+        where: { className: createClassDto.className },
+      });
+  
+      if (existingClass) {
+        throw new ConflictException('Class name must be unique');
+      }
+  
+      const newClass = this.classRepository.create({
+        className: createClassDto.className,
+        numStudent: 0,
+      });
+  
+      return await this.classRepository.save(newClass);
     }
-    increaseStudentByClassName(name: string): void {
-        
-        const classIndex = this.classes.findIndex((classItem) => classItem.className === name );
-        if(classIndex === -1){
-            throw new NotFoundException(`Class not found`);
-        }
-        this.classes[classIndex].numStudent++;
+  
+    async increaseStudentByClassName(name: string): Promise<void> {
+      const classEntity = await this.classRepository.findOne({
+        where: { className: name },
+      });
+  
+      if (!classEntity) {
+        throw new NotFoundException(`Class not found`);
+      }
+  
+      classEntity.numStudent++;
+      await this.classRepository.save(classEntity);
     }
-
-    deCreaseStudentByClassName(name: string): void {
-        const classIndex = this.classes.findIndex(
-            (classItem) => classItem.className === name,
-        );
-        if(classIndex === -1){
-            throw new NotFoundException(`Class not found`);
-        }
-        this.classes[classIndex].numStudent--;
+  
+    async decreaseStudentByClassName(name: string): Promise<void> {
+      const classEntity = await this.classRepository.findOne({
+        where: { className: name },
+      });
+  
+      if (!classEntity) {
+        throw new NotFoundException(`Class not found`);
+      }
+  
+      classEntity.numStudent--;
+      await this.classRepository.save(classEntity);
     }
-    findByClassName(name: string): Class {
-        
-        return this.classes.find(
-            (classItem) => classItem.className === name,
-        );
+  
+    async findByClassName(name: string): Promise<Class> {
+      const classEntity = await this.classRepository.findOne({
+        where: { className: name },
+      });
+  
+      if (!classEntity) {
+        throw new NotFoundException(`Class not found`);
+      }
+  
+      return classEntity;
     }
-    searchByClassName(name:string) : Class[]{
-        const classessByName = this.classes.filter(c => c.className.includes(name));
-        if(classessByName.length == 0 )
-            throw new NotFoundException(`No students found with the name ${name}`);
-        return classessByName;
+  
+    async searchByClassName(name: string): Promise<Class[]> {
+      const classes = await this.classRepository.find({
+        where: { className: name },
+      });
+  
+      if (classes.length === 0) {
+        throw new NotFoundException(`No classes found with the name ${name}`);
+      }
+  
+      return classes;
     }
-    findById(id: string): Class {
-        const foundClass = this.classes.find((classItem) => classItem.id === id);
-        if (!foundClass) {
-            throw new NotFoundException(`Class with ID ${id} not found`);
-        }
-        return foundClass;
+  
+    async findById(id: string): Promise<Class> {
+      const classEntity = await this.classRepository.findOne({ where: { id } });
+  
+      if (!classEntity) {
+        throw new NotFoundException(`Class with ID ${id} not found`);
+      }
+  
+      return classEntity;
     }
-    updateClass(id: string, updateClassDto: UpdateClassDto): Class {
-
-        const classExists = this.classes.some(
-            (classItem) => classItem.className === updateClassDto.className,
-        );
-
-        if (classExists) {
-            throw new ConflictException(`Class name '${updateClassDto.className}' already exists`);
-        }
-
-        const classToUpdate = this.findById(id);
-        classToUpdate.className = updateClassDto.className;
-        return classToUpdate;
+  
+    async updateClass(id: string, updateClassDto: UpdateClassDto): Promise<Class> {
+      const classExists = await this.classRepository.findOne({
+        where: { className: updateClassDto.className },
+      });
+  
+      if (classExists && classExists.id !== id) {
+        throw new ConflictException(`Class name '${updateClassDto.className}' already exists`);
+      }
+  
+      const classToUpdate = await this.findById(id);
+      classToUpdate.className = updateClassDto.className;
+  
+      return await this.classRepository.save(classToUpdate);
     }
-    deleteClass(classId: string): string {
-        const classToDelete = this.classes.find((classItem) => classItem.id === classId);
-
-        if (!classToDelete) {
-            throw new NotFoundException('Class not found');
-        }
-
-
-        
-
-        if (classToDelete.numStudent > 0) {
-            throw new BadRequestException('Cannot delete class with students');
-        }
-
-
-        this.classes = this.classes.filter((classItem) => classItem.id !== classId);
-        return `Class with ID ${classId} has been deleted`;
+  
+    async deleteClass(classId: string): Promise<string> {
+      const classToDelete = await this.classRepository.findOne({ where: { id: classId } });
+  
+      if (!classToDelete) {
+        throw new NotFoundException('Class not found');
+      }
+  
+      if (classToDelete.numStudent > 0) {
+        throw new BadRequestException('Cannot delete class with students');
+      }
+  
+      await this.classRepository.remove(classToDelete);
+      return `Class with ID ${classId} has been deleted`;
     }
-    getAll(): Class[]{
-        return this.classes;
+  
+    async getAll(): Promise<Class[]> {
+      return await this.classRepository.find();
     }
-}
+  }
+  

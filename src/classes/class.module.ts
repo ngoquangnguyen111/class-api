@@ -1,18 +1,17 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ClassesController } from './class.controller';
 import { ClassesService } from './class.service';
-import { StudentService } from 'src/students/student.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Class } from './entities/class.entity';
 import { StudentModule } from 'src/students/student.module';
-// import { TypeOrmModule } from '@nestjs/typeorm'; 
-// import { Class } from './class.entity'; 
 
 @Module({
-    imports: [
-       
-    ],
-    controllers: [ClassesController],
-    providers: [ClassesService], // Inject ClassService và StudentService vào providers
-    exports: [ClassesService], // Xuất ra để các module khác dùng
-    
+  imports: [
+    TypeOrmModule.forFeature([Class]), // Kết nối entity "Class" với TypeORM
+    StudentModule, // Import StudentModule để quản lý quan hệ với Student
+  ],
+  controllers: [ClassesController],
+  providers: [ClassesService],
+  exports: [ClassesService],
 })
-export class ClassModule { }
+export class ClassModule {}
